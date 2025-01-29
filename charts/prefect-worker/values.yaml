@@ -316,3 +316,14 @@ role:
 rolebinding:
   # -- specifies whether a RoleBinding should be created
   create: true
+
+clusterRole:
+  create: true
+  extraPermissions:
+    - apiGroups: [""]
+      resources: ["namespaces"]
+      verbs: ["get", "list"]
+
+clusterRoleBinding:
+  create: true
+
