@@ -15,8 +15,8 @@ metadata:
   {{- end }}
 subjects:
   - kind: ServiceAccount
-    name: {{ template "worker.serviceAccountName" . }}
-    namespace: {{ include "common.names.namespace" . | quote }}
+    name: {{ .Values.serviceAccount.name }}  
+    namespace: {{ include "common.names.namespace" . | quote }} 
 roleRef:
   kind: ClusterRole
   name: "prefect-worker-cluster-role-{{ .Release.Name }}"
