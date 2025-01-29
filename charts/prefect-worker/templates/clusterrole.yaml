@@ -1,0 +1,23 @@
+{{- if .Values.clusterRole.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: "prefect-worker-cluster-role-{{ .Release.Name }}"
+  labels: 
+    app.kubernetes.io/component: worker
+    prefect-version: {{ .Chart.AppVersion }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: 
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list"]
+{{- if .Values.clusterRole.extraPermissions }}
+{{- include "common.tplvalues.render" (dict "value" .Values.clusterRole.extraPermissions "context" $) | nindent 2 }}
+{{- end }}
+{{- end }}
