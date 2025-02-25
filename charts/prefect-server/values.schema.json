@@ -42,7 +42,7 @@
           "type": "object",
           "title": "Prefect",
           "description": "global prefect configuration",
-          "additionalProperties": false,
+          "additionalProperties": true,
           "properties": {
             "image": {
               "type": "object",
@@ -67,14 +67,6 @@
                   }
                 }
               }
-            },
-            "prefectApiUrl": {
-              "type": "string",
-              "description": "sets PREFECT_API_URL"
-            },
-            "prefectApiHost": {
-              "type": "string",
-              "description": "sets PREFECT_SERVER_API_HOST"
             },
             "env": {
               "type": "array",
@@ -160,16 +152,6 @@
           "title": "Logging Level",
           "description": "sets PREFECT_LOGGING_SERVER_LEVEL"
         },
-        "prefectApiUrl": {
-          "type": "string",
-          "title": "Prefect API URL",
-          "description": "sets PREFECT_API_URL"
-        },
-        "prefectApiHost": {
-          "type": "string",
-          "title": "Prefect API Host",
-          "description": "sets PREFECT_SERVER_API_HOST"
-        },
         "uiConfig": {
           "type": "object",
           "title": "UI Config",
@@ -184,11 +166,6 @@
               "type": "string",
               "title": "Prefect API URL",
               "description": "sets PREFECT_UI_API_URL"
-            },
-            "prefectUiUrl": {
-              "type": "string",
-              "title": "Prefect UI URL",
-              "description": "sets PREFECT_UI_URL"
             }
           }
         },
@@ -198,6 +175,22 @@
           "description": "array with environment variables to add to server nodes",
           "items": {
             "type": "object"
+          }
+        },
+        "args": {
+          "type": "array",
+          "title": "Custom container command arguments",
+          "description": "array with arguments",
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "array",
+          "title": "Custom container entrypoint",
+          "description": "array with container entrypoint",
+          "items": {
+            "type": "string"
           }
         },
         "revisionHistoryLimit": {
