@@ -1,16 +1,26 @@
 # Upgrade guidelines
 
-## > TBD
+## > 2025.3.7033449
 
-After version TBD, the `prefect-worker` chart renamed the `server` key to `selfHostedServer`. Also, the allowed values for the `apiConfig` key changed from `cloud`, `server`, or `selfManaged` to `cloud`, `selfManagedCloud`, or `selfHostedServer`.
+After version 2025.3.7033449, there have been several breaking changes to the `prefect-worker` chart:
+- The allowed values for the `apiConfig` key changed from `cloud`, `server`, or `selfManaged` to `cloud`, `selfHostedServer`, and `selfManagedCloud`.
+- The `serverApiConfig` key has been replaced with the `selfHostedServerApiConfig`.
+  - `.Values.worker.serverApiConfig` => `.Values.worker.selfHostedServerApiConfig`
+- The `basicAuth` key has been nested under the `selfHostedServerApiConfig` key.
+  - `.Values.worker.basicAuth` => `.Values.worker.selfHostedServerApiConfig.basicAuth`
 
-### Self Hosted Server Configuration
+### Adjusting Your Configuration
+
+#### Self Hosted Server Configuration
+
 **Before**
 
 ```yaml
 worker:
+  basicAuth:
+    ...
   apiConfig: server
-  server:
+  serverApiConfig:
     ...
 ```
 
@@ -20,10 +30,12 @@ worker:
 worker:
   apiConfig: selfHostedServer
   selfHostedServerApiConfig:
-    ...
+    basicAuth:
+      ...
 ```
 
-### Self Managed Cloud Configuration
+#### Self Managed Cloud Configuration
+
 **Before**
 
 ```yaml

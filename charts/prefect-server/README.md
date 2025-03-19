@@ -54,7 +54,27 @@ server:
 
 ## Background Services Configuration
 
-The Prefect server includes background services related to scheduling and cleanup. By default, these run in the same deployment as the web server, but they can be separated for better resource management and scalability.
+The Prefect server includes background services related to scheduling and
+cleanup. By default, these run in the same deployment as the web server, but
+they can be separated for better resource management and scalability.
+
+Support for this separation was added to provide a path to scaling your deployment as your usage grows.
+If you are orchestrating a lot of work, you may need more web services to handle requests than background
+services to field the increased API requests.
+
+By default, the web services and background services share a connection pool to the
+database, but their connection needs are very different and even antagonistic
+with each other at times. Splitting the background services out also allows you
+to tune the datbase connections for each deployment (pool size, timeout, etc.),
+which can help with the database load.
+
+The separate deployment for background services is currently limited to one replica
+because it has not been optimized for running multiple copies. Additionally, many background
+services run on a loop between 5 and 60 seconds, so if they go down, Kubernetes should bring
+them back up after a health check without much disruption.
+
+Splitting the background services is optional, and is likely not necessary if
+you are not having any issues with your setup.
 
 To run background services in a separate deployment:
 
@@ -200,20 +220,14 @@ the HorizontalPodAutoscaler.
 | backgroundServices.containerSecurityContext.readOnlyRootFilesystem | bool | `true` | set background-services containers' security context readOnlyRootFilesystem |
 | backgroundServices.containerSecurityContext.runAsNonRoot | bool | `true` | set background-services containers' security context runAsNonRoot |
 | backgroundServices.containerSecurityContext.runAsUser | int | `1001` | set background-services containers' security context runAsUser |
-| backgroundServices.debug | bool | `false` | enable background-services debug mode |
+| backgroundServices.debug | bool | `false` | sets PREFECT_DEBUG_MODE |
 | backgroundServices.env | list | `[]` | array with environment variables to add to background-services container |
 | backgroundServices.extraContainers | list | `[]` | additional sidecar containers |
 | backgroundServices.extraEnvVarsCM | string | `""` | name of existing ConfigMap containing extra env vars to add to background-services pod |
 | backgroundServices.extraEnvVarsSecret | string | `""` | name of existing Secret containing extra env vars to add to background-services pod |
 | backgroundServices.extraVolumeMounts | list | `[]` | array with extra volumeMounts for the background-services pod |
 | backgroundServices.extraVolumes | list | `[]` | array with extra volumes for the background-services pod |
-| backgroundServices.livenessProbe.config.failureThreshold | int | `3` | The number of consecutive failures allowed before considering the probe as failed. |
-| backgroundServices.livenessProbe.config.initialDelaySeconds | int | `10` | The number of seconds to wait before starting the first probe. |
-| backgroundServices.livenessProbe.config.periodSeconds | int | `10` | The number of seconds to wait between consecutive probes. |
-| backgroundServices.livenessProbe.config.successThreshold | int | `1` | The minimum consecutive successes required to consider the probe successful. |
-| backgroundServices.livenessProbe.config.timeoutSeconds | int | `5` | The number of seconds to wait for a probe response before considering it as failed. |
-| backgroundServices.livenessProbe.enabled | bool | `false` |  |
-| backgroundServices.loggingLevel | string | `"WARNING"` |  |
+| backgroundServices.loggingLevel | string | `"WARNING"` | sets PREFECT_LOGGING_SERVER_LEVEL |
 | backgroundServices.nodeSelector | object | `{}` | node labels for background-services pod assignment |
 | backgroundServices.podAnnotations | object | `{}` | extra annotations for background-services pod |
 | backgroundServices.podLabels | object | `{}` | extra labels for background-services pod |
@@ -221,12 +235,6 @@ the HorizontalPodAutoscaler.
 | backgroundServices.podSecurityContext.runAsNonRoot | bool | `true` | set background-services pod's security context runAsNonRoot |
 | backgroundServices.podSecurityContext.runAsUser | int | `1001` | set background-services pod's security context runAsUser |
 | backgroundServices.priorityClassName | string | `""` | priority class name to use for the background-services pods; if the priority class is empty or doesn't exist, the background-services pods are scheduled without a priority class |
-| backgroundServices.readinessProbe.config.failureThreshold | int | `3` | The number of consecutive failures allowed before considering the probe as failed. |
-| backgroundServices.readinessProbe.config.initialDelaySeconds | int | `10` | The number of seconds to wait before starting the first probe. |
-| backgroundServices.readinessProbe.config.periodSeconds | int | `10` | The number of seconds to wait between consecutive probes. |
-| backgroundServices.readinessProbe.config.successThreshold | int | `1` | The minimum consecutive successes required to consider the probe successful. |
-| backgroundServices.readinessProbe.config.timeoutSeconds | int | `5` | The number of seconds to wait for a probe response before considering it as failed. |
-| backgroundServices.readinessProbe.enabled | bool | `false` |  |
 | backgroundServices.resources.limits | object | `{"cpu":"1","memory":"1Gi"}` | the requested limits for the background-services container |
 | backgroundServices.resources.requests | object | `{"cpu":"500m","memory":"512Mi"}` | the requested resources for the background-services container |
 | backgroundServices.revisionHistoryLimit | int | `10` | the number of old ReplicaSets to retain to allow rollback |
@@ -274,6 +282,7 @@ the HorizontalPodAutoscaler.
 | secret.port | string | `""` | port for the PostgreSQL connection string |
 | secret.username | string | `""` | username for the PostgreSQL connection string |
 | server.affinity | object | `{}` | affinity for server pods assignment |
+| server.apiBasePath | string | `"/api"` | sets PREFECT_SERVER_API_BASE_PATH |
 | server.args | list | `[]` | Custom container command arguments |
 | server.autoscaling.enabled | bool | `false` | enable autoscaling for server |
 | server.autoscaling.maxReplicas | int | `100` | maximum number of server replicas |
@@ -289,7 +298,7 @@ the HorizontalPodAutoscaler.
 | server.containerSecurityContext.readOnlyRootFilesystem | bool | `true` | set server containers' security context readOnlyRootFilesystem |
 | server.containerSecurityContext.runAsNonRoot | bool | `true` | set server containers' security context runAsNonRoot |
 | server.containerSecurityContext.runAsUser | int | `1001` | set server containers' security context runAsUser |
-| server.debug | bool | `false` | enable server debug mode |
+| server.debug | bool | `false` | sets PREFECT_DEBUG_MODE |
 | server.env | list | `[]` | array with environment variables to add to server deployment |
 | server.extraArgs | list | `[]` | array with extra Arguments for the server container to start with |
 | server.extraContainers | list | `[]` | additional sidecar containers |
@@ -303,7 +312,7 @@ the HorizontalPodAutoscaler.
 | server.livenessProbe.config.successThreshold | int | `1` | The minimum consecutive successes required to consider the probe successful. |
 | server.livenessProbe.config.timeoutSeconds | int | `5` | The number of seconds to wait for a probe response before considering it as failed. |
 | server.livenessProbe.enabled | bool | `false` |  |
-| server.loggingLevel | string | `"WARNING"` |  |
+| server.loggingLevel | string | `"WARNING"` | sets PREFECT_LOGGING_SERVER_LEVEL |
 | server.nodeSelector | object | `{}` | node labels for server pods assignment |
 | server.podAnnotations | object | `{}` | extra annotations for server pod |
 | server.podLabels | object | `{}` | extra labels for server pod |
@@ -323,10 +332,9 @@ the HorizontalPodAutoscaler.
 | server.resources.requests | object | `{"cpu":"500m","memory":"512Mi"}` | the requested resources for the server container |
 | server.revisionHistoryLimit | int | `10` | the number of old ReplicaSets to retain to allow rollback |
 | server.tolerations | list | `[]` | tolerations for server pods assignment |
-| server.uiConfig.enabled | bool | `true` | set PREFECT_UI_ENABLED; enable the UI on the server |
 | server.uiConfig.prefectUiApiUrl | string | `"http://localhost:4200/api"` | sets PREFECT_UI_API_URL; If you want to connect to the UI from somewhere external to the cluster (i.e. via an ingress), you need to set this value to the ingress URL (e.g. http://app.internal.prefect.com/api). You can find additional documentation on this here - https://docs.prefect.io/v3/manage/self-host#ui |
 | server.uiConfig.prefectUiStaticDirectory | string | `"/ui_build"` | sets PREFECT_UI_STATIC_DIRECTORY |
-| service.annotations | object | `{}` |  |
+| service.annotations | object | `{}` | additional custom annotations for server service |
 | service.clusterIP | string | `""` | service Cluster IP |
 | service.externalTrafficPolicy | string | `"Cluster"` | service external traffic policy |
 | service.extraPorts | list | `[]` |  |
