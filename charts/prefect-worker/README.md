@@ -324,12 +324,18 @@ worker:
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.bitnami.com/bitnami | common | 2.27.0 |
+| https://charts.bitnami.com/bitnami | common | 2.30.2 |
 
 ## Values
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
+| clusterRole.create | bool | `true` |  |
+| clusterRole.extraPermissions[0].apiGroups[0] | string | `""` |  |
+| clusterRole.extraPermissions[0].resources[0] | string | `"namespaces"` |  |
+| clusterRole.extraPermissions[0].verbs[0] | string | `"get"` |  |
+| clusterRole.extraPermissions[0].verbs[1] | string | `"list"` |  |
+| clusterRoleBinding.create | bool | `true` |  |
 | commonAnnotations | object | `{}` | annotations to add to all deployed objects |
 | commonLabels | object | `{}` | labels to add to all deployed objects |
 | fullnameOverride | string | `"prefect-worker"` | fully override common.names.fullname |
