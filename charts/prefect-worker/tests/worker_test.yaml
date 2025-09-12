@@ -64,6 +64,49 @@ tests:
           path: .spec.template.spec.initContainers[0].image
           value: custom/prefect-init:v2.0.0
 
+  - it: Should set the correct initContainer resource requests and limits
+    set:
+      worker:
+        config:
+          baseJobTemplate:
+            configuration: |
+              {}
+        initContainer:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+              ephemeral-storage: 50Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+              ephemeral-storage: 100Mi
+    asserts:
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.initContainers[0].resources.requests.cpu
+          value: 50m
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.initContainers[0].resources.requests.memory
+          value: 128Mi
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.initContainers[0].resources.requests.ephemeral-storage
+          value: 50Mi
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.initContainers[0].resources.limits.cpu
+          value: 200m
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.initContainers[0].resources.limits.memory
+          value: 256Mi
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.initContainers[0].resources.limits.ephemeral-storage
+          value: 100Mi
+
   - it: Should set the correct image and tag
     asserts:
       - template: deployment.yaml
@@ -118,8 +161,8 @@ tests:
       worker:
         config:
           workQueues:
-          - one
-          - two
+            - one
+            - two
     asserts:
       - template: deployment.yaml
         equal:
@@ -213,9 +256,11 @@ tests:
           requests:
             cpu: 250m
             memory: 256Mi
+            ephemeral-storage: 100Mi
           limits:
             cpu: 500m
             memory: 512Mi
+            ephemeral-storage: 200Mi
     asserts:
       - template: deployment.yaml
         equal:
@@ -227,12 +272,20 @@ tests:
           value: 256Mi
       - template: deployment.yaml
         equal:
+          path: .spec.template.spec.containers[0].resources.requests.ephemeral-storage
+          value: 100Mi
+      - template: deployment.yaml
+        equal:
           path: .spec.template.spec.containers[0].resources.limits.cpu
           value: 500m
       - template: deployment.yaml
         equal:
           path: .spec.template.spec.containers[0].resources.limits.memory
           value: 512Mi
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.containers[0].resources.limits.ephemeral-storage
+          value: 200Mi
 
   - it: Should set the correct security context
     set:
@@ -280,6 +333,30 @@ tests:
         equal:
           path: .spec.template.spec.containers[0].securityContext.allowPrivilegeEscalation
           value: true
+
+  - it: Should unset the security context
+    set:
+      worker:
+        podSecurityContext:
+          runAsUser: null
+          fsGroup: null
+    asserts:
+      - template: deployment.yaml
+        notExists:
+          path: .spec.template.spec.securityContext.runAsUser
+      - template: deployment.yaml
+        notExists:
+          path: .spec.template.spec.securityContext.fsGroup
+
+  - it: Should unset the container security context
+    set:
+      worker:
+        containerSecurityContext:
+          runAsUser: null
+    asserts:
+      - template: deployment.yaml
+        notExists:
+          path: .spec.template.spec.containers[0].securityContext.runAsUser
 
   - it: Should set pod annotations
     set:
@@ -666,3 +743,118 @@ tests:
       - template: deployment.yaml
         isNullOrEmpty:
           path: .spec.template.spec.dnsConfig.searches
+
+  - it: Should set Kubernetes worker observer namespaces by default
+    asserts:
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.containers[0].env[?(@.name == "PREFECT_INTEGRATIONS_KUBERNETES_OBSERVER_NAMESPACES")].value
+          value: prefect
+
+  - it: Should set Kubernetes worker observer namespaces with override
+    set:
+      namespaceOverride: my-namespace
+    asserts:
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.containers[0].env[?(@.name == "PREFECT_INTEGRATIONS_KUBERNETES_OBSERVER_NAMESPACES")].value
+          value: my-namespace
+
+  - it: Should set auth string secret environment variables when existingSecret is provided
+    set:
+      worker:
+        selfHostedServerApiConfig:
+          basicAuth:
+            enabled: true
+            existingSecret: "my-auth-secret"
+    asserts:
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.containers[0].env[?(@.name == "PREFECT_INTEGRATIONS_KUBERNETES_WORKER_API_AUTH_STRING_SECRET_NAME")].value
+          value: "my-auth-secret"
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.containers[0].env[?(@.name == "PREFECT_INTEGRATIONS_KUBERNETES_WORKER_API_AUTH_STRING_SECRET_KEY")].value
+          value: "auth-string"
+
+  - it: Should configure custom entrypoint and args
+    set:
+      worker:
+        command:
+          - /usr/bin/tini
+          - myentrypoint
+        args:
+          - prefect
+          - worker
+          - start
+    asserts:
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.containers[0].command
+          value:
+            - /usr/bin/tini
+            - myentrypoint
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.containers[0].args
+          value:
+            - prefect
+            - worker
+            - start
+
+  - it: Should configure additional labels on templated resources
+    set:
+      worker:
+        autoscaling:
+          enabled: true
+        config:
+          baseJobTemplate:
+            configuration: |
+              {}
+      role:
+        create: true
+      rolebinding:
+        create: true
+      serviceAccount:
+        create: true
+      commonLabels:
+        my-label: my-value
+    asserts:
+      - template: configmap.yaml
+        equal:
+          path: .metadata.labels.my-label
+          value: my-value
+      - template: deployment.yaml
+        equal:
+          path: .metadata.labels.my-label
+          value: my-value
+      - template: hpa.yaml
+        equal:
+          path: .metadata.labels.my-label
+          value: my-value
+      - template: role.yaml
+        equal:
+          path: .metadata.labels.my-label
+          value: my-value
+      - template: rolebinding.yaml
+        equal:
+          path: .metadata.labels.my-label
+          value: my-value
+      - template: serviceaccount.yaml
+        equal:
+          path: .metadata.labels.my-label
+          value: my-value
+
+  - it: Should allow override of role and rolebinding namespace
+    set:
+      role:
+        namespace: my-namespace
+    asserts:
+      - template: role.yaml
+        equal:
+          path: .metadata.namespace
+          value: my-namespace
+      - template: rolebinding.yaml
+        equal:
+          path: .metadata.namespace
+          value: my-namespace

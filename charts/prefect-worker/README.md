@@ -324,7 +324,7 @@ worker:
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.bitnami.com/bitnami | common | 2.27.0 |
+| https://charts.bitnami.com/bitnami | common | 2.31.4 |
 
 ## Values
 
@@ -337,12 +337,14 @@ worker:
 | namespaceOverride | string | `""` | fully override common.names.namespace |
 | role.create | bool | `true` | specifies whether a Role should be created |
 | role.extraPermissions | list | `[]` | array with extra permissions to add to the worker role |
+| role.namespace | string | `nil` | the namespace to deploy the role to. If not provided, deploys to the same namespace as the worker |
 | rolebinding.create | bool | `true` | specifies whether a RoleBinding should be created |
 | serviceAccount.annotations | object | `{}` | additional service account annotations (evaluated as a template) |
 | serviceAccount.create | bool | `true` | specifies whether a ServiceAccount should be created |
 | serviceAccount.name | string | `""` | the name of the ServiceAccount to use. if not set and create is true, a name is generated using the common.names.fullname template |
 | worker.affinity | object | `{}` | affinity for worker pods assignment |
 | worker.apiConfig | string | `"cloud"` | one of 'cloud', 'selfManagedCloud', or 'selfHostedServer' |
+| worker.args | list | `[]` | Custom container command arguments |
 | worker.autoscaling.enabled | bool | `false` | enable autoscaling for the worker |
 | worker.autoscaling.maxReplicas | int | `1` | maximum number of replicas to scale up to |
 | worker.autoscaling.minReplicas | int | `1` | minimum number of replicas to scale down to |
@@ -354,6 +356,7 @@ worker:
 | worker.cloudApiConfig.cloudUrl | string | `"https://api.prefect.cloud/api"` | prefect cloud API url; the full URL is constructed as https://cloudUrl/accounts/accountId/workspaces/workspaceId |
 | worker.cloudApiConfig.workspaceId | string | `""` | prefect workspace ID |
 | worker.clusterUid | string | `""` | unique cluster identifier, if none is provided this value will be inferred at time of helm install |
+| worker.command | list | `[]` | Custom container entrypoint |
 | worker.config.baseJobTemplate.configuration | string | `nil` | JSON formatted base job template. If data is provided here, the chart will generate a configmap and mount it to the worker pod |
 | worker.config.baseJobTemplate.existingConfigMapName | string | `""` | the name of an existing ConfigMap containing a base job template. NOTE - the key must be 'baseJobTemplate.json' |
 | worker.config.http2 | bool | `true` | connect using HTTP/2 if the server supports it (experimental) |
@@ -369,7 +372,7 @@ worker:
 | worker.containerSecurityContext.capabilities | object | `{}` | set worker container's security context capabilities |
 | worker.containerSecurityContext.readOnlyRootFilesystem | bool | `true` | set worker containers' security context readOnlyRootFilesystem |
 | worker.containerSecurityContext.runAsNonRoot | bool | `true` | set worker containers' security context runAsNonRoot |
-| worker.containerSecurityContext.runAsUser | int | `1001` | set worker containers' security context runAsUser |
+| worker.containerSecurityContext.runAsUser | int | `1001` | set worker containers' security context runAsUser, set to `null` to unset |
 | worker.dnsConfig.nameservers | list | `[]` | optional list of IP addresses that will be used as dns servers for the Pod |
 | worker.dnsConfig.options | list | `[]` | optional list of dns options for the Pod |
 | worker.dnsConfig.searches | list | `[]` | optional list of dns search domains for hostname lookup in the Pod |
@@ -393,7 +396,7 @@ worker:
 | worker.initContainer.containerSecurityContext.capabilities | object | `{}` | set init container's security context capabilities |
 | worker.initContainer.containerSecurityContext.readOnlyRootFilesystem | bool | `true` | set init containers' security context readOnlyRootFilesystem |
 | worker.initContainer.containerSecurityContext.runAsNonRoot | bool | `true` | set init containers' security context runAsNonRoot |
-| worker.initContainer.containerSecurityContext.runAsUser | int | `1001` | set init containers' security context runAsUser |
+| worker.initContainer.containerSecurityContext.runAsUser | int | `1001` | set init containers' security context runAsUser, set to `null` to unset |
 | worker.initContainer.extraContainers | list | `[]` | additional sidecar containers |
 | worker.initContainer.resources | object | `{}` | the resource specifications for the sync-base-job-template initContainer Defaults to the resources defined for the worker container |
 | worker.livenessProbe.config.failureThreshold | int | `3` | The number of consecutive failures allowed before considering the probe as failed. |
@@ -405,9 +408,9 @@ worker:
 | worker.nodeSelector | object | `{}` | node labels for worker pods assignment |
 | worker.podAnnotations | object | `{}` | extra annotations for worker pod |
 | worker.podLabels | object | `{}` | extra labels for worker pod |
-| worker.podSecurityContext.fsGroup | int | `1001` | set worker pod's security context fsGroup |
+| worker.podSecurityContext.fsGroup | int | `1001` | set worker pod's security context fsGroup, set to `null` to unset |
 | worker.podSecurityContext.runAsNonRoot | bool | `true` | set worker pod's security context runAsNonRoot |
-| worker.podSecurityContext.runAsUser | int | `1001` | set worker pod's security context runAsUser |
+| worker.podSecurityContext.runAsUser | int | `1001` | set worker pod's security context runAsUser, set to `null` to unset |
 | worker.podSecurityContext.seccompProfile | object | `{"type":"RuntimeDefault"}` | set worker pod's seccomp profile |
 | worker.priorityClassName | string | `""` | priority class name to use for the worker pods; if the priority class is empty or doesn't exist, the worker pods are scheduled without a priority class |
 | worker.replicaCount | int | `1` | number of worker replicas to deploy |

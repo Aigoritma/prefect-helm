@@ -65,7 +65,7 @@ services to field the increased API requests.
 By default, the web services and background services share a connection pool to the
 database, but their connection needs are very different and even antagonistic
 with each other at times. Splitting the background services out also allows you
-to tune the datbase connections for each deployment (pool size, timeout, etc.),
+to tune the database connections for each deployment (pool size, timeout, etc.),
 which can help with the database load.
 
 The separate deployment for background services is currently limited to one replica
@@ -78,15 +78,65 @@ you are not having any issues with your setup.
 
 To run background services in a separate deployment:
 
+> [!WARNING]
+> **Version Requirement**: When using `backgroundServices.runAsSeparateDeployment: true`, you must use Prefect 3.4.16 or later. Earlier versions have a bug where the `--no-services` flag doesn't fully disable background services, causing Redis connection errors in the server pod.
+
 ```yaml
 backgroundServices:
   runAsSeparateDeployment: true
+
+# Use the bundled Redis chart
+# See the next section for more details on other deployment options
+redis:
+  enabled: true
 ```
 
 This configuration is recommended when:
 - You're experiencing database connection pool contention
 - You need different scaling policies for the web server and background services
 - You want to monitor and manage resource usage separately
+
+You can read more about this architecture in the [How to scale self-hosted Prefect](https://docs.prefect.io/v3/advanced/self-hosted) guide.
+
+## Redis Configuration
+
+This section applies when enabling the use of Background Services.
+
+For a simple deployment, you can use the bundled Redis chart by setting the following:
+
+```yaml
+redis:
+  enabled: true
+```
+
+This will automatically configure the Prefect server and background services to use the bundled Redis instance with the correct connection string information.
+
+If you want to use the bundled Redis chart but need to customize the configuration, you can do so by providing additional values under the `redis` section. For example:
+
+```yaml
+redis:
+  enabled: true
+
+  auth:
+    # set a custom password for the Redis instance
+    password: "dontpanic!"
+```
+
+You can find additional configuration values in the [Bitnami Redis chart values.yaml file](https://github.com/bitnami/charts/blob/main/bitnami/redis/values.yaml).
+
+### Using an External Redis Instance
+
+If you want to use an existing or external Redis instance, do not set `redis.enabled`. Provide the connection details in the `backgroundServices.messaging.redis` section:
+
+```yaml
+backgroundServices:
+  runAsSeparateDeployment: true
+  messaging:
+    redis:
+      host: external.redis.host.example.com
+      username: marvin
+      password: paranoid!
+```
 
 ## PostgreSQL Configuration
 
@@ -166,10 +216,38 @@ secret:
     type: Opaque
     ```
 
-3. Set the connection string in the existing secret following this format - `?ssl=verify-ca` is cruicial:
+3. Set the connection string in the existing secret following this format - `?ssl=verify-ca` is crucial:
     ```
     postgresql+asyncpg://{username}:{password}@{hostname}/{database}?ssl=verify-ca
     ```
+
+### Database Migrations
+
+The chart automatically handles database migrations during upgrades using a pre-upgrade hook. When you upgrade the chart, it will:
+
+1. Run `prefect server database upgrade -y` before updating the main deployment
+2. Ensure your database schema is compatible with the new Prefect version
+3. Block the upgrade if migrations fail
+
+**Important Notes:**
+- Migrations only run for PostgreSQL deployments (not SQLite)
+- The migration job uses the same database credentials as your main deployment
+- **Downgrades require manual intervention** - if you need to rollback, you may need to manually run database downgrade commands
+- For more details, see [Prefect's database migration documentation](https://docs.prefect.io/v3/advanced/self-hosted#database-migrations)
+
+#### Migration Configuration
+
+The migration behavior can be customized through the `migrations` section in your values.
+
+For example, to disable automatic migrations (not recommended):
+
+```yaml
+migrations:
+  # Enable/disable automatic migrations (default: true)
+  enabled: false
+```
+
+Consult the `values.yaml` file for additional configuration options such as resource requests/limits, backoff limits, and timeouts.
 
 ## SQLite Configuration
 
@@ -207,8 +285,9 @@ the HorizontalPodAutoscaler.
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.bitnami.com/bitnami | common | 2.27.0 |
+| https://charts.bitnami.com/bitnami | common | 2.31.4 |
 | https://charts.bitnami.com/bitnami | postgresql | 12.12.10 |
+| https://charts.bitnami.com/bitnami | redis | 22.0.4 |
 
 ## Values
 
@@ -230,6 +309,15 @@ the HorizontalPodAutoscaler.
 | backgroundServices.extraVolumeMounts | list | `[]` | array with extra volumeMounts for the background-services pod |
 | backgroundServices.extraVolumes | list | `[]` | array with extra volumes for the background-services pod |
 | backgroundServices.loggingLevel | string | `"WARNING"` | sets PREFECT_LOGGING_SERVER_LEVEL |
+| backgroundServices.messaging.broker | string | `"prefect_redis.messaging"` | messaging broker class to use for background services |
+| backgroundServices.messaging.cache | string | `"prefect_redis.messaging"` | messaging cache class to use for background services |
+| backgroundServices.messaging.redis | object | `{"db":0,"host":"","password":"","port":6379,"ssl":false,"username":""}` | settings for redis broker/cache change these if not using the built-in redis subchart |
+| backgroundServices.messaging.redis.db | int | `0` | redis database number |
+| backgroundServices.messaging.redis.host | string | `""` | redis hostname if using the built-in redis subchart, this will be automatically set to the redis subchart's service name |
+| backgroundServices.messaging.redis.password | string | `""` | redis password, leave empty to use default if using the built-in redis subchart, this will be automatically set to the redis subchart's password value |
+| backgroundServices.messaging.redis.port | int | `6379` | redis port |
+| backgroundServices.messaging.redis.ssl | bool | `false` | use TLS for redis connection |
+| backgroundServices.messaging.redis.username | string | `""` | redis username, leave empty to use no authentication if using the built-in redis subchart, this will be automatically set to the redis subchart's username value |
 | backgroundServices.nodeSelector | object | `{}` | node labels for background-services pod assignment |
 | backgroundServices.podAnnotations | object | `{}` | extra annotations for background-services pod |
 | backgroundServices.podLabels | object | `{}` | extra labels for background-services pod |
@@ -266,6 +354,17 @@ the HorizontalPodAutoscaler.
 | ingress.selfSigned | bool | `false` | create a TLS secret for this ingress record using self-signed certificates generated by Helm |
 | ingress.servicePort | string | `"server-svc-port"` | port for the ingress' main path |
 | ingress.tls | bool | `false` | enable TLS configuration for the host defined at `ingress.host.hostname` parameter |
+| migrations.backoffLimit | int | `5` | job backoff limit (number of retries) |
+| migrations.command | string | `"prefect server database upgrade -y\n"` | commands to run for database migrations (default: prefect server database upgrade -y) |
+| migrations.enabled | bool | `true` | enable automatic database migrations during chart upgrades |
+| migrations.entrypoint | list | `["/bin/sh","-c"]` | custom container entrypoint for the migration job |
+| migrations.env | list | `[]` | additional environment variables for the migration job |
+| migrations.extraVolumeMounts | list | `[]` | additional volume mounts for the migration job |
+| migrations.extraVolumes | list | `[]` | additional volumes for the migration job |
+| migrations.resources | object | `{"limits":{"cpu":"500m","memory":"256Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}` | job resources configuration |
+| migrations.restartPolicy | string | `"Never"` | job restart policy |
+| migrations.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{},"readOnlyRootFilesystem":true,"runAsNonRoot":true,"runAsUser":1001}` | job security context configuration |
+| migrations.timeoutSeconds | int | `300` | job timeout in seconds (default: 300 seconds / 5 minutes) |
 | nameOverride | string | `""` | partially overrides common.names.name |
 | namespaceOverride | string | `""` | fully override common.names.namespace |
 | postgresql.auth.database | string | `"server"` | name for a custom database |
@@ -273,9 +372,14 @@ the HorizontalPodAutoscaler.
 | postgresql.auth.password | string | `"prefect-rocks"` | password for the custom user. Ignored if `auth.existingSecret` with key `password` is provided |
 | postgresql.auth.username | string | `"prefect"` | name for a custom user |
 | postgresql.enabled | bool | `true` | enable use of bitnami/postgresql subchart |
-| postgresql.image.tag | string | `"14.13.0"` | Version tag, corresponds to tags at https://hub.docker.com/r/bitnami/postgresql/ |
+| postgresql.image.repository | string | `"bitnamilegacy/postgresql"` | Image repository.  Defaults to legacy bitnami repository for postgres 14.13.0 availability. |
+| postgresql.image.tag | string | `"14.13.0"` | Version tag, corresponds to tags at https://hub.docker.com/layers/bitnamilegacy/postgresql/ |
 | postgresql.primary.initdb.user | string | `"postgres"` | specify the PostgreSQL username to execute the initdb scripts |
 | postgresql.primary.persistence.enabled | bool | `false` | enable PostgreSQL Primary data persistence using PVC |
+| redis.architecture | string | `"standalone"` | Redis architecture Note: Prefect currently only supports standalone Redis deployments. |
+| redis.enabled | bool | `false` | enable use of bitnami/redis subchart if backgroundServices.runAsSeparateDeployment=true, you must set this to true or provide your own redis instance |
+| redis.image.repository | string | `"bitnamilegacy/redis"` | Image repository.  Defaults to legacy bitnami repository for redis 8.2.1 availability. |
+| redis.image.tag | string | `"8.2.1"` | Version tag, corresponds to tags at https://hub.docker.com/r/bitnami/redis/ |
 | secret.create | bool | `true` | whether to create a Secret containing the PostgreSQL connection string |
 | secret.database | string | `""` | database for the PostgreSQL connection string |
 | secret.host | string | `""` | host for the PostgreSQL connection string |
@@ -336,6 +440,7 @@ the HorizontalPodAutoscaler.
 | server.tolerations | list | `[]` | tolerations for server pods assignment |
 | server.uiConfig.prefectUiApiUrl | string | `"http://localhost:4200/api"` | sets PREFECT_UI_API_URL; If you want to connect to the UI from somewhere external to the cluster (i.e. via an ingress), you need to set this value to the ingress URL (e.g. http://app.internal.prefect.com/api). You can find additional documentation on this here - https://docs.prefect.io/v3/manage/self-host#ui |
 | server.uiConfig.prefectUiStaticDirectory | string | `"/ui_build"` | sets PREFECT_UI_STATIC_DIRECTORY |
+| server.updateStrategy | object | `{"type":"RollingUpdate"}` | Specifies the strategy used to replace old Pods by new ones. Type can be "Recreate" or "RollingUpdate". Setting this to "Recreate" is useful when database is on a mounted volume that can only be attached to a single node at a time. |
 | service.annotations | object | `{}` | additional custom annotations for server service |
 | service.clusterIP | string | `""` | service Cluster IP |
 | service.externalTrafficPolicy | string | `"Cluster"` | service external traffic policy |

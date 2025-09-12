@@ -110,10 +110,12 @@ server:
     requests:
       cpu: 500m
       memory: 512Mi
+      # ephemeral-storage:
     # -- the requested limits for the server container
     limits:
       cpu: "1"
       memory: 1Gi
+      # ephemeral-storage:
 
   # ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
   livenessProbe:
@@ -170,6 +172,16 @@ server:
     # -- set server container's security context capabilities
     capabilities: {}
 
+  # ref: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/
+  # -- Specifies the strategy used to replace old Pods by new ones. Type can be "Recreate" or "RollingUpdate".
+  # Setting this to "Recreate" is useful when database is on a mounted volume that can only be attached to a single node at a time.
+  updateStrategy:
+    type: RollingUpdate
+    # example RollingUpdate options
+    # rollingUpdate:
+    #   maxUnavailable: "1"
+    #   maxSurge: "25%"
+
   # ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
   # -- extra labels for server pod
   podLabels: {}
@@ -207,6 +219,43 @@ server:
 
   # -- array with extra Arguments for the server container to start with
   extraArgs: []
+
+## Database Migration Configuration
+migrations:
+  # -- enable automatic database migrations during chart upgrades
+  enabled: true
+  # -- commands to run for database migrations (default: prefect server database upgrade -y)
+  command: |
+    prefect server database upgrade -y
+  # -- custom container entrypoint for the migration job
+  entrypoint: ["/bin/sh", "-c"]
+  # -- job resources configuration
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  # -- job security context configuration
+  securityContext:
+    runAsUser: 1001
+    runAsNonRoot: true
+    readOnlyRootFilesystem: true
+    allowPrivilegeEscalation: false
+    capabilities: {}
+  # -- job timeout in seconds (default: 300 seconds / 5 minutes)
+  timeoutSeconds: 300
+  # -- job backoff limit (number of retries)
+  backoffLimit: 5
+  # -- job restart policy
+  restartPolicy: Never
+  # -- additional environment variables for the migration job
+  env: []
+  # -- additional volume mounts for the migration job
+  extraVolumeMounts: []
+  # -- additional volumes for the migration job
+  extraVolumes: []
 
 ## Background Services Deployment Configuration
 backgroundServices:
@@ -322,6 +371,40 @@ backgroundServices:
     # -- additional service account annotations (evaluated as a template)
     annotations: {}
 
+  # Configuration for background service messaging using Redis
+  messaging:
+    # ref: https://docs.prefect.io/v3/api-ref/settings-ref#messaging-broker
+    # -- messaging broker class to use for background services
+    broker: prefect_redis.messaging
+
+    # ref: https://docs.prefect.io/v3/api-ref/settings-ref#messaging-cache
+    # -- messaging cache class to use for background services
+    cache: prefect_redis.messaging
+
+    # -- settings for redis broker/cache
+    # change these if not using the built-in redis subchart
+    redis:
+      # -- redis hostname
+      # if using the built-in redis subchart, this will be automatically set to the redis subchart's service name
+      host: ""
+
+      # -- redis port
+      port: 6379
+
+      # -- redis database number
+      db: 0
+
+      # -- redis username, leave empty to use no authentication
+      # if using the built-in redis subchart, this will be automatically set to the redis subchart's username value
+      username: ""
+
+      # -- redis password, leave empty to use default
+      # if using the built-in redis subchart, this will be automatically set to the redis subchart's password value
+      password: ""
+
+      # -- use TLS for redis connection
+      ssl: false
+
 ## Server Service Account configuration
 serviceAccount:
   # -- specifies whether a service account should be created
@@ -341,14 +424,14 @@ service:
   nodePort: ""
 
   extraPorts: []
-    # # example extra ports
-    # - name: sample-svc-port
-    #   # -- service port
-    #   port: 8080
-    #   # -- target port
-    #   targetPort: 8080
-    #   # -- service port if defining service as type nodeport
-    #   nodePort: ""
+  # example extra ports
+  # - name: sample-svc-port
+  #   # -- service port
+  #   port: 8080
+  #   # -- target port
+  #   targetPort: 8080
+  #   # -- service port if defining service as type nodeport
+  #   nodePort: ""
 
   # -- service type
   type: ClusterIP
@@ -499,5 +582,23 @@ postgresql:
       enabled: false
 
   image:
-    # -- Version tag, corresponds to tags at https://hub.docker.com/r/bitnami/postgresql/
+    # -- Image repository.  Defaults to legacy bitnami repository for postgres 14.13.0 availability.
+    repository: bitnamilegacy/postgresql
+    # -- Version tag, corresponds to tags at https://hub.docker.com/layers/bitnamilegacy/postgresql/
     tag: 14.13.0
+
+# Redis subchart - default overrides
+redis:
+  # -- enable use of bitnami/redis subchart
+  # if backgroundServices.runAsSeparateDeployment=true, you must set this to true or provide your own redis instance
+  enabled: false
+
+  # -- Redis architecture
+  # Note: Prefect currently only supports standalone Redis deployments.
+  architecture: standalone
+
+  image:
+    # -- Image repository.  Defaults to legacy bitnami repository for redis 8.2.1 availability.
+    repository: bitnamilegacy/redis
+    # -- Version tag, corresponds to tags at https://hub.docker.com/r/bitnami/redis/
+    tag: 8.2.1

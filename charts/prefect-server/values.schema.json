@@ -79,6 +79,137 @@
         }
       }
     },
+    "migrations": {
+      "type": "object",
+      "title": "Migrations",
+      "description": "database migration configuration",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enabled",
+          "description": "enable automatic database migrations during chart upgrades"
+        },
+        "podLabels": {
+          "type": "object",
+          "title": "Pod Labels",
+          "description": "additional labels for the migration job pods"
+        },
+        "command": {
+          "type": "string",
+          "title": "Command",
+          "description": "custom command to run for database migrations"
+        },
+        "entrypoint": {
+          "type": "array",
+          "title": "Entrypoint",
+          "description": "custom container entrypoint for the migration job",
+          "items": {
+            "type": "string"
+          }
+        },
+        "resources": {
+          "type": "object",
+          "title": "Resources",
+          "description": "job resources configuration",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "description": "CPU request for the migration job"
+                },
+                "memory": {
+                  "type": "string",
+                  "description": "Memory request for the migration job"
+                }
+              }
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "description": "CPU limit for the migration job"
+                },
+                "memory": {
+                  "type": "string",
+                  "description": "Memory limit for the migration job"
+                }
+              }
+            }
+          }
+        },
+        "securityContext": {
+          "type": "object",
+          "title": "Security Context",
+          "description": "job security context configuration",
+          "properties": {
+            "runAsUser": {
+              "type": "integer",
+              "description": "user ID to run the container as"
+            },
+            "runAsNonRoot": {
+              "type": "boolean",
+              "description": "whether the container must run as a non-root user"
+            },
+            "readOnlyRootFilesystem": {
+              "type": "boolean",
+              "description": "whether the container has a read-only root filesystem"
+            },
+            "allowPrivilegeEscalation": {
+              "type": "boolean",
+              "description": "whether to allow privilege escalation"
+            },
+            "capabilities": {
+              "type": "object",
+              "description": "capabilities to add or drop"
+            }
+          }
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "title": "Timeout Seconds",
+          "description": "job timeout in seconds"
+        },
+        "backoffLimit": {
+          "type": "integer",
+          "title": "Backoff Limit",
+          "description": "job backoff limit (number of retries)"
+        },
+        "restartPolicy": {
+          "type": "string",
+          "title": "Restart Policy",
+          "description": "job restart policy",
+          "enum": ["Never", "OnFailure"]
+        },
+        "env": {
+          "type": "array",
+          "title": "Environment Variables",
+          "description": "additional environment variables for the migration job",
+          "items": {
+            "type": "object"
+          }
+        },
+        "extraVolumeMounts": {
+          "type": "array",
+          "title": "Extra Volume Mounts",
+          "description": "additional volume mounts for the migration job",
+          "items": {
+            "type": "object"
+          }
+        },
+        "extraVolumes": {
+          "type": "array",
+          "title": "Extra Volumes",
+          "description": "additional volumes for the migration job",
+          "items": {
+            "type": "object"
+          }
+        }
+      }
+    },
     "server": {
       "type": "object",
       "title": "Server",
@@ -200,6 +331,35 @@
             "type": "string"
           }
         },
+        "updateStrategy": {
+          "type": "object",
+          "title": "Update strategy",
+          "description": "The type of update strategy to use to replace existing pods with new ones",
+          "properties": {
+            "type": {
+              "type": "string",
+              "title": "Deployment type",
+              "description": "Type of deployment. Can be \"Recreate\" or \"RollingUpdate\"."
+            },
+            "rollingUpdate" : {
+              "type": "object",
+              "title": "Rolling update settings",
+              "description": "Rolling update config params. Should only be specified if updateStrategy is set to \"RollingUpdate\".",
+              "properties": {
+                "maxSurge": {
+                  "type": "string",
+                  "title": "Max pod surge",
+                  "description": ""
+                },
+                "maxUnavailable": {
+                  "type": "string",
+                  "title": "Max unavailable pods",
+                  "description": ""
+                }
+              }
+            }
+          }
+        },
         "revisionHistoryLimit": {
           "type": "integer",
           "title": "Revision History Limit",
@@ -264,6 +424,11 @@
                   "type": "string",
                   "title": "Memory",
                   "description": "server memory request"
+                },
+                "ephemeral-storage": {
+                  "type": "string",
+                  "title": "Ephemeral Storage",
+                  "description": "server ephemeral storage request"
                 }
               }
             },
@@ -282,6 +447,11 @@
                   "type": "string",
                   "title": "Memory",
                   "description": "server memory limit"
+                },
+                "ephemeral-storage": {
+                  "type": "string",
+                  "title": "Ephemeral Storage",
+                  "description": "server ephemeral storage limit"
                 }
               }
             }
@@ -386,7 +556,7 @@
           "additionalProperties": false,
           "properties": {
             "runAsUser": {
-              "type": "integer",
+              "type": ["integer", "null"],
               "title": "Run As User",
               "description": "set server pod's security context runAsUser"
             },
@@ -396,7 +566,7 @@
               "description": "set server pods security context runAsNonRoot"
             },
             "fsGroup": {
-              "type": "integer",
+              "type": ["integer", "null"],
               "title": "FS Group",
               "description": "set server pod's security context fsGroup"
             },
@@ -451,7 +621,7 @@
           "additionalProperties": false,
           "properties": {
             "runAsUser": {
-              "type": "integer",
+              "type": ["integer", "null"],
               "title": "Run As User",
               "description": "set server container's security context runAsUser"
             },
@@ -561,52 +731,6 @@
           "type": "array",
           "title": "Extra Container Args",
           "description": "array with extra args for the server container"
-        },
-        "backgroundServices": {
-          "type": "object",
-          "title": "Background Services",
-          "description": "configuration for running background services separately",
-          "properties": {
-            "runAsSeparateDeployment": {
-              "type": "boolean",
-              "title": "Run Separately",
-              "description": "run background services in a separate deployment"
-            },
-            "replicaCount": {
-              "type": "integer",
-              "title": "Replica Count",
-              "description": "number of background services replicas to deploy"
-            },
-            "resources": {
-              "type": "object",
-              "title": "Resources",
-              "description": "resources for the background services container",
-              "properties": {
-                "requests": {
-                  "type": "object",
-                  "properties": {
-                    "cpu": {
-                      "type": "string"
-                    },
-                    "memory": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "limits": {
-                  "type": "object",
-                  "properties": {
-                    "cpu": {
-                      "type": "string"
-                    },
-                    "memory": {
-                      "type": "string"
-                    }
-                  }
-                }
-              }
-            }
-          }
         }
       }
     },
@@ -665,11 +789,27 @@
           "properties": {
             "requests": {
               "type": "object",
-              "description": "the requested resources for the background-services container"
+              "description": "the requested resources for the background-services container",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
             },
             "limits": {
               "type": "object",
-              "description": "the requested limits for the background-services container"
+              "description": "the requested limits for the background-services container",
+              "properties": {
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                }
+              }
             }
           }
         },
@@ -712,15 +852,15 @@
         "podSecurityContext": {
           "type": "object",
           "properties": {
-            "runAsUser": { "type": "integer" },
+            "runAsUser": { "type": ["integer", "null"] },
             "runAsNonRoot": { "type": "boolean" },
-            "fsGroup": { "type": "integer" }
+            "fsGroup": { "type": ["integer", "null"] }
           }
         },
         "containerSecurityContext": {
           "type": "object",
           "properties": {
-            "runAsUser": { "type": "integer" },
+            "runAsUser": { "type": ["integer", "null"] },
             "runAsNonRoot": { "type": "boolean" },
             "readOnlyRootFilesystem": { "type": "boolean" },
             "allowPrivilegeEscalation": { "type": "boolean" },
@@ -757,6 +897,64 @@
               "type": "object",
               "title": "Annotations",
               "description": "annotations to add to the background services service account"
+            }
+          }
+        },
+        "messaging": {
+          "type": "object",
+          "title": "Messaging",
+          "description": "messaging configuration for background services",
+          "additionalProperties": false,
+          "properties": {
+            "broker": {
+              "type": "string",
+              "title": "Broker class",
+              "description": "messaging broker class to use for background services"
+            },
+            "cache": {
+              "type": "string",
+              "title": "Cache class",
+              "description": "messaging cache class to use for background services"
+            },
+            "redis": {
+              "type": "object",
+              "title": "Redis broker settings",
+              "description": "redis broker settings for background services",
+              "additionalProperties": false,
+              "properties": {
+                "host": {
+                  "type": "string",
+                  "title": "Redis hostname",
+                    "description": "redis broker hostname for background services"
+                },
+                "port": {
+                  "type": ["integer", "string"],
+                  "title": "Redis port",
+                  "description": "redis broker port for background services"
+                },
+                "db": {
+                  "type": ["integer", "string"],
+                  "title": "Redis database",
+                  "description": "redis broker database for background services"
+                },
+                "username": {
+                  "type": "string",
+                  "title": "Redis username",
+                  "description": "redis broker username for background services",
+                  "optional": true
+                },
+                "password": {
+                  "type": "string",
+                  "title": "Redis password",
+                  "description": "redis broker password for background services",
+                  "optional": true
+                },
+                "ssl": {
+                  "type": "boolean",
+                  "title": "SSL",
+                  "description": "enable SSL for redis broker connection"
+                }
+              }
             }
           }
         }
@@ -1046,6 +1244,17 @@
           "properties": {
             "tag": { "type": "string" }
           }
+        }
+      }
+    },
+    "redis": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "title": "Enabled",
+          "description": "deploy a redis cluster for Prefect Server messaging"
         }
       }
     }

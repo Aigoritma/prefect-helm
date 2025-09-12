@@ -217,27 +217,18 @@ Contributions to the Prefect Helm Charts are always welcome! We welcome your hel
 To get started, install the required dependencies by running:
 
 ```shell
-make all
+mise run tools
 ```
 
 This will install tools like `helm`, `pre-commit`, and `mise`.
 
-You'll also need to install dependencies for the charts you're working on. You can use the following commands to install dependencies for each chart:
-
-```shell
-# Server Chart
-make buildserver
-# Worker Chart
-make buildworker
-# Prometheus Prefect Exporter Chart
-make buildprom
-# All Charts
-make buildall
-```
+To see a list of all available commands, run `mise tasks ls`.
 
 ### Testing & validation
 
 Make sure that any new functionality is well tested!  You can do this by installing the chart locally, see [above](https://github.com/PrefectHQ/prefect-helm#installing-development-versions) for how to do this.
+
+#### Helm unit tests
 
 You can also create and run test suites via [helm-unittest](https://github.com/helm-unittest/helm-unittest).
 Related test files are stored under `./charts/<chart>/tests/*_test.yaml`.
@@ -246,11 +237,24 @@ Refer to the `helm-unittest` repository for more information.
 The following helper script will run the tests via the `helm-unittest` Docker image in case you don't have the binary installed locally:
 
 ```shell
-make helmtest
+mise run helmtest
 ```
 
 When `helm-unittest` is available via the [`mise` registry](https://mise.jdx.dev/registry.html), we'll add it to `.mise.toml`
 for easy local installation.
+
+#### Helm linting and validation
+
+We use [chart-testing](https://github.com/helm/chart-testing) for linting and validation of our charts.
+Configuration files are stored under `./github/linters/*-ct.yaml`.
+Refer to the `chart-testing` repository for more information.
+
+The following helper script will run the tests via the `chart-testing` Docker image. The `helm-ct` binary will
+be installed locally through `mise`, but the Docker image addresses the problem of a missing local `chart_schema.yaml` file.
+
+```shell
+mise run charttest
+```
 
 ### Opening a PR
 

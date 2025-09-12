@@ -14,10 +14,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run helm unittest
         uses: d3adb5/helm-unittest-action@v2
         with:
           helm-version: v3.17.1
-          unittest-version: 0.7.2
+          unittest-version: 1.0.0

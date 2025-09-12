@@ -18,6 +18,7 @@ spec:
   selector:
     matchLabels: {{- include "common.labels.matchLabels" . | nindent 6 }}
       app.kubernetes.io/component: server
+  strategy: {{ toYaml .Values.server.updateStrategy | nindent 4 }}
   template:
     metadata:
       {{- if .Values.server.podAnnotations }}
@@ -127,6 +128,10 @@ spec:
             {{- if .Values.server.env }}
             {{- include "common.tplvalues.render" (dict "value" .Values.server.env "context" $) | nindent 12 }}
             {{- end }}
+            {{- if .Values.backgroundServices.runAsSeparateDeployment }}
+            {{- include "backgroundServices.envVars" . | nindent 12 }}
+            {{- end }}
+          {{- if or (.Values.server.extraEnvVarsCM) (.Values.server.extraEnvVarsSecret) }}
           envFrom:
             {{- if .Values.server.extraEnvVarsCM }}
             - configMapRef:
@@ -136,6 +141,7 @@ spec:
             - secretRef:
                 name: {{ include "common.tplvalues.render" (dict "value" .Values.server.extraEnvVarsSecret "context" $) }}
             {{- end }}
+          {{- end -}}
           {{- if .Values.server.resources }}
           resources: {{- toYaml .Values.server.resources | nindent 12 }}
           {{- end }}
