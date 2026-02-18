@@ -302,7 +302,7 @@ worker:
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.bitnami.com/bitnami | common | 2.34.0 |
+| https://charts.bitnami.com/bitnami | common | 2.36.0 |
 
 ## Values
 
