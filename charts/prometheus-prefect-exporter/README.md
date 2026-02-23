@@ -82,7 +82,7 @@ basicAuth:
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.bitnami.com/bitnami | common | 2.31.4 |
+| https://charts.bitnami.com/bitnami | common | 2.36.0 |
 
 ## Values
 
@@ -95,6 +95,7 @@ basicAuth:
 | basicAuth.existingSecret | string | `""` | name of existing secret containing basic auth credentials. takes precedence over authString. must contain a key `auth-string` with the value of the auth string |
 | csrfAuth | bool | `false` | Enable CSRF authentication (Only set to true if Prefect Server has CSRF enabled) |
 | env | object | `{}` | Environment variables to configure application |
+| extraEnvVars | list | `[]` | array with extra environment variables to add to exporter deployment pods |
 | fullnameOverride | string | `""` | String to fully override common.names.fullname template |
 | image | object | `{"pullPolicy":"IfNotPresent","repository":"prefecthq/prometheus-prefect-exporter","tag":"1.1.0"}` | Image registry |
 | imagePullSecrets | list | `[]` | Global Docker registry secret names as an array |
@@ -115,8 +116,10 @@ basicAuth:
 | resources | object | `{}` | The resources limits and requested |
 | revisionHistoryLimit | int | `10` | the number of old ReplicaSets to retain to allow rollback |
 | securityContext | object | `{}` | Defines privilege and access control settings for a Pod or Container |
-| service | object | `{"annotations":{},"port":80,"targetPort":8000,"type":"ClusterIP"}` | Kubernetes servide to expose Pod |
+| service | object | `{"annotations":{},"ipFamilies":[],"ipFamilyPolicy":"","port":80,"targetPort":8000,"type":"ClusterIP"}` | Kubernetes servide to expose Pod |
 | service.annotations | object | `{}` | additional custom annotations for exporter service |
+| service.ipFamilies | list | `[]` | list of IP families (e.g. [IPv4], [IPv6], [IPv4, IPv6]) |
+| service.ipFamilyPolicy | string | `""` | service IP family policy for dual-stack support (SingleStack, PreferDualStack, RequireDualStack) ref: https://kubernetes.io/docs/concepts/services-networking/dual-stack/ |
 | service.port | int | `80` | Kubernetes Service port |
 | service.targetPort | int | `8000` | Pod expose port |
 | service.type | string | `"ClusterIP"` | Kubernetes Service type. Allowed values: NodePort, LoadBalancer or ClusterIP |

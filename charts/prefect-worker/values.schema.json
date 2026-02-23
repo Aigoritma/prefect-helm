@@ -284,6 +284,16 @@
               "title": "Type",
               "description": "the type of worker to start i.e kubernetes"
             },
+            "jobNamespace": {
+              "type": ["string", "null"],
+              "title": "Job Namespace",
+              "description": "the namespace where the jobs would spawn. If unset, spawns in the same namespace as the worker controller. Requires role.namespace to be set with the same value."
+            },
+            "observerClusterWide": {
+              "type": "boolean",
+              "title": "Observer Cluster Wide",
+              "description": "if true, the Kubernetes observer will watch for pod events and job crash detection across the entire cluster. If true, PREFECT_INTEGRATIONS_KUBERNETES_OBSERVER_NAMESPACES will not be set."
+            },
             "baseJobTemplate": {
               "type": "object",
               "title": "Base Job Template",
@@ -312,8 +322,8 @@
         "apiConfig": {
           "type": "string",
           "title": "API Config",
-          "description": "one of 'cloud', 'selfManagedCloud', or 'selfHostedServer'",
-          "enum": ["cloud", "selfManagedCloud", "selfHostedServer"]
+          "description": "one of 'cloud', 'customerManagedCloud', or 'selfHostedServer'",
+          "enum": ["cloud", "customerManagedCloud", "selfHostedServer"]
         },
         "cloudApiConfig": {
           "type": "object",
@@ -355,7 +365,7 @@
             }
           }
         },
-        "selfManagedCloudApiConfig": {
+        "customerManagedCloudApiConfig": {
           "type": "object",
           "title": "Self-managed API Configuration",
           "description": "Self-managed API Configuration",
@@ -807,6 +817,11 @@
               "description": "a list of DNS resolver options"
             }
           }
+        },
+        "podDisruptionBudget": {
+          "type": "object",
+          "title": "Pod Disruption Budget",
+          "description": "Limits the number of Pods of a replicated application that are down simultaneously from voluntary disruptions"
         }
       }
     },

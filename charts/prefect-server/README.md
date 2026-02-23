@@ -124,6 +124,9 @@ redis:
 
 You can find additional configuration values in the [Bitnami Redis chart values.yaml file](https://github.com/bitnami/charts/blob/main/bitnami/redis/values.yaml).
 
+**NOTE** Using the embedded Bitnami Redis chart his is **not intended for production use**, and is only
+included to provide a functional proof of concept installation.
+
 ### Using an External Redis Instance
 
 If you want to use an existing or external Redis instance, do not set `redis.enabled`. Provide the connection details in the `backgroundServices.messaging.redis` section:
@@ -285,7 +288,7 @@ the HorizontalPodAutoscaler.
 
 | Repository | Name | Version |
 |------------|------|---------|
-| https://charts.bitnami.com/bitnami | common | 2.31.4 |
+| https://charts.bitnami.com/bitnami | common | 2.36.0 |
 | https://charts.bitnami.com/bitnami | postgresql | 12.12.10 |
 | https://charts.bitnami.com/bitnami | redis | 22.0.4 |
 
@@ -325,6 +328,7 @@ the HorizontalPodAutoscaler.
 | backgroundServices.podSecurityContext.runAsNonRoot | bool | `true` | set background-services pod's security context runAsNonRoot |
 | backgroundServices.podSecurityContext.runAsUser | int | `1001` | set background-services pod's security context runAsUser |
 | backgroundServices.priorityClassName | string | `""` | priority class name to use for the background-services pods; if the priority class is empty or doesn't exist, the background-services pods are scheduled without a priority class |
+| backgroundServices.replicaCount | int | `1` | number of background-services replicas to deploy |
 | backgroundServices.resources.limits | object | `{"cpu":"1","memory":"1Gi"}` | the requested limits for the background-services container |
 | backgroundServices.resources.requests | object | `{"cpu":"500m","memory":"512Mi"}` | the requested resources for the background-services container |
 | backgroundServices.revisionHistoryLimit | int | `10` | the number of old ReplicaSets to retain to allow rollback |
@@ -336,11 +340,46 @@ the HorizontalPodAutoscaler.
 | commonAnnotations | object | `{}` | annotations to add to all deployed objects |
 | commonLabels | object | `{}` | labels to add to all deployed objects |
 | fullnameOverride | string | `"prefect-server"` | fully override common.names.fullname |
+| gateway.annotations | object | `{}` | additional annotations for the Gateway resource |
+| gateway.className | string | `""` | GatewayClass that will be used to implement the Gateway This must match an existing GatewayClass in your cluster |
+| gateway.enabled | bool | `false` | enable Gateway API resources (mutually exclusive with ingress) |
+| gateway.infrastructure | object | `{}` | infrastructure configuration for Gateway ref: https://gateway-api.sigs.k8s.io/guides/infrastructure/ |
+| gateway.labels | object | `{}` | additional labels for the Gateway resource |
+| gateway.listeners | list | `[{"hostname":"","name":"http","port":80,"protocol":"HTTP"},{"hostname":"","name":"https","port":443,"protocol":"HTTPS","tls":{"certificateRefs":[{"kind":"Secret","name":"","namespace":""}],"mode":"Terminate"}}]` | Gateway listeners configuration |
+| gateway.listeners[0] | object | `{"hostname":"","name":"http","port":80,"protocol":"HTTP"}` | listener name |
+| gateway.listeners[0].hostname | string | `""` | hostname pattern for this listener (e.g., "*.example.com") |
+| gateway.listeners[0].port | int | `80` | listener port |
+| gateway.listeners[0].protocol | string | `"HTTP"` | listener protocol (HTTP, HTTPS, TCP, TLS) |
+| gateway.listeners[1].hostname | string | `""` | hostname pattern for this listener |
+| gateway.listeners[1].port | int | `443` | listener port |
+| gateway.listeners[1].protocol | string | `"HTTPS"` | listener protocol |
+| gateway.listeners[1].tls | object | `{"certificateRefs":[{"kind":"Secret","name":"","namespace":""}],"mode":"Terminate"}` | TLS configuration for HTTPS listener |
+| gateway.listeners[1].tls.certificateRefs | list | `[{"kind":"Secret","name":"","namespace":""}]` | certificate references (Secrets containing TLS cert/key) |
+| gateway.listeners[1].tls.certificateRefs[0] | object | `{"kind":"Secret","name":"","namespace":""}` | kind of resource (usually Secret) |
+| gateway.listeners[1].tls.certificateRefs[0].name | string | `""` | name of the Secret (defaults to ingress pattern if not set) |
+| gateway.listeners[1].tls.certificateRefs[0].namespace | string | `""` | namespace of the Secret (optional, defaults to same namespace) |
+| gateway.listeners[1].tls.mode | string | `"Terminate"` | TLS mode (Terminate or Passthrough) |
+| gateway.name | string | `""` | Gateway resource name (defaults to chart fullname if not set) |
 | global.prefect.env | list | `[]` | array with environment variables to add to all deployments |
 | global.prefect.image.prefectTag | string | `"3-latest"` | prefect image tag (immutable tags are recommended) |
 | global.prefect.image.pullPolicy | string | `"IfNotPresent"` | prefect image pull policy |
 | global.prefect.image.pullSecrets | list | `[]` | prefect image pull secrets |
 | global.prefect.image.repository | string | `"prefecthq/prefect"` | prefect image repository |
+| httproute.annotations | object | `{}` | additional annotations for the HTTPRoute resource |
+| httproute.enabled | bool | `true` | enable HTTPRoute resource (auto-enabled when gateway.enabled=true) Can be disabled if you want to create HTTPRoutes manually |
+| httproute.extraRules | list | `[]` | additional HTTPRoute rules (advanced usage) Will be merged with auto-generated rules |
+| httproute.hostnames | list | `[]` | hostnames that this HTTPRoute should match |
+| httproute.labels | object | `{}` | additional labels for the HTTPRoute resource |
+| httproute.name | string | `""` | HTTPRoute resource name (defaults to chart fullname if not set) |
+| httproute.parentRefs | list | `[{"name":"","namespace":"","port":null,"sectionName":"https"}]` | parent Gateway references |
+| httproute.parentRefs[0] | object | `{"name":"","namespace":"","port":null,"sectionName":"https"}` | name of the Gateway to attach to (defaults to gateway.name) |
+| httproute.parentRefs[0].namespace | string | `""` | namespace of the Gateway (optional) |
+| httproute.parentRefs[0].port | string | `nil` | port number (optional) |
+| httproute.parentRefs[0].sectionName | string | `"https"` | specific listener name to attach to (optional, defaults to "https") |
+| httproute.path | string | `"/"` | path prefix for HTTPRoute matching |
+| httproute.tls | object | `{"redirect":false,"redirectPort":443}` | TLS redirect configuration |
+| httproute.tls.redirect | bool | `false` | enable automatic HTTP to HTTPS redirect |
+| httproute.tls.redirectPort | int | `443` | HTTPS port for redirect (defaults to 443) |
 | ingress.annotations | object | `{}` | additional annotations for the Ingress resource. To enable certificate autogeneration, place here your cert-manager annotations. |
 | ingress.className | string | `""` | IngressClass that will be used to implement the Ingress (Kubernetes 1.18+) |
 | ingress.enabled | bool | `false` | enable ingress record generation for server |
@@ -354,6 +393,7 @@ the HorizontalPodAutoscaler.
 | ingress.selfSigned | bool | `false` | create a TLS secret for this ingress record using self-signed certificates generated by Helm |
 | ingress.servicePort | string | `"server-svc-port"` | port for the ingress' main path |
 | ingress.tls | bool | `false` | enable TLS configuration for the host defined at `ingress.host.hostname` parameter |
+| migrations.affinity | object | `{}` | affinity for migration job pods assignment |
 | migrations.backoffLimit | int | `5` | job backoff limit (number of retries) |
 | migrations.command | string | `"prefect server database upgrade -y\n"` | commands to run for database migrations (default: prefect server database upgrade -y) |
 | migrations.enabled | bool | `true` | enable automatic database migrations during chart upgrades |
@@ -361,10 +401,12 @@ the HorizontalPodAutoscaler.
 | migrations.env | list | `[]` | additional environment variables for the migration job |
 | migrations.extraVolumeMounts | list | `[]` | additional volume mounts for the migration job |
 | migrations.extraVolumes | list | `[]` | additional volumes for the migration job |
+| migrations.nodeSelector | object | `{}` | node labels for migration job pods assignment |
 | migrations.resources | object | `{"limits":{"cpu":"500m","memory":"256Mi"},"requests":{"cpu":"100m","memory":"128Mi"}}` | job resources configuration |
 | migrations.restartPolicy | string | `"Never"` | job restart policy |
 | migrations.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{},"readOnlyRootFilesystem":true,"runAsNonRoot":true,"runAsUser":1001}` | job security context configuration |
 | migrations.timeoutSeconds | int | `300` | job timeout in seconds (default: 300 seconds / 5 minutes) |
+| migrations.tolerations | list | `[]` | tolerations for migration job pods assignment |
 | nameOverride | string | `""` | partially overrides common.names.name |
 | namespaceOverride | string | `""` | fully override common.names.namespace |
 | postgresql.auth.database | string | `"server"` | name for a custom database |
@@ -433,7 +475,7 @@ the HorizontalPodAutoscaler.
 | server.readinessProbe.config.successThreshold | int | `1` | The minimum consecutive successes required to consider the probe successful. |
 | server.readinessProbe.config.timeoutSeconds | int | `5` | The number of seconds to wait for a probe response before considering it as failed. |
 | server.readinessProbe.enabled | bool | `false` |  |
-| server.replicaCount | int | `1` | number of server replicas to deploy |
+| server.replicaCount | int | `1` | number of server replicas to deploy, ignored if autoscaling is enabled |
 | server.resources.limits | object | `{"cpu":"1","memory":"1Gi"}` | the requested limits for the server container |
 | server.resources.requests | object | `{"cpu":"500m","memory":"512Mi"}` | the requested resources for the server container |
 | server.revisionHistoryLimit | int | `10` | the number of old ReplicaSets to retain to allow rollback |
@@ -445,8 +487,11 @@ the HorizontalPodAutoscaler.
 | service.clusterIP | string | `""` | service Cluster IP |
 | service.externalTrafficPolicy | string | `"Cluster"` | service external traffic policy |
 | service.extraPorts | list | `[]` |  |
+| service.ipFamilies | list | `[]` | list of IP families (e.g. [IPv4], [IPv6], [IPv4, IPv6]) |
+| service.ipFamilyPolicy | string | `""` | service IP family policy for dual-stack support (SingleStack, PreferDualStack, RequireDualStack) ref: https://kubernetes.io/docs/concepts/services-networking/dual-stack/ |
 | service.nodePort | string | `""` | service port if defining service as type nodeport |
 | service.port | int | `4200` | service port |
+| service.portName | string | `"server-svc-port"` | service port name |
 | service.targetPort | int | `4200` | target port of the server pod; also sets PREFECT_SERVER_API_PORT |
 | service.type | string | `"ClusterIP"` | service type |
 | serviceAccount.annotations | object | `{}` | additional service account annotations (evaluated as a template) |

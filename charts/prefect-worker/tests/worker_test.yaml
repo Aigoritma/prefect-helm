@@ -199,8 +199,8 @@ tests:
   - it: Should set the correct API configuration for self-managed cloud
     set:
       worker:
-        apiConfig: "selfManagedCloud"
-        selfManagedCloudApiConfig:
+        apiConfig: "customerManagedCloud"
+        customerManagedCloudApiConfig:
           apiUrl: "https://my-prefect-api.com/api"
           accountId: "my-account-id"
           workspaceId: "my-workspace-id"
@@ -239,15 +239,41 @@ tests:
           path: .spec.template.spec.containers[0].env[?(@.name == "PREFECT_API_KEY")].valueFrom.secretKeyRef.key
           value: api-key
 
-  - it: Should set the correct replica count
+  - it: Should set the correct replica count when autoscaling is disabled
     set:
       worker:
         replicaCount: 3
+        autoscaling:
+          enabled: false
     asserts:
       - template: deployment.yaml
         equal:
           path: .spec.replicas
           value: 3
+
+  - it: Should omit replicas field from deployment when autoscaling is enabled
+    set:
+      worker:
+        autoscaling:
+          enabled: true
+          minReplicas: 2
+          maxReplicas: 5
+    asserts:
+      - template: deployment.yaml
+        notExists:
+          path: .spec.replicas
+
+  - it: Should include replicas field in deployment when autoscaling is disabled
+    set:
+      worker:
+        autoscaling:
+          enabled: false
+        replicaCount: 4
+    asserts:
+      - template: deployment.yaml
+        equal:
+          path: .spec.replicas
+          value: 4
 
   - it: Should set the correct resource requests and limits
     set:
@@ -587,8 +613,8 @@ tests:
   - it: Should set Kubernetes worker secret env vars for self-managed config
     set:
       worker:
-        apiConfig: selfManagedCloud
-        selfManagedCloudApiConfig:
+        apiConfig: customerManagedCloud
+        customerManagedCloudApiConfig:
           apiUrl: https://my-prefect-cloud.example.com/api
           accountId: test-account
           workspaceId: test-workspace
@@ -760,6 +786,28 @@ tests:
           path: .spec.template.spec.containers[0].env[?(@.name == "PREFECT_INTEGRATIONS_KUBERNETES_OBSERVER_NAMESPACES")].value
           value: my-namespace
 
+  - it: Should set Kubernetes worker observer namespaces with job override
+    set:
+      namespaceOverride: my-namespace
+      worker:
+        config:
+          jobNamespace: job-namespace
+    asserts:
+      - template: deployment.yaml
+        equal:
+          path: .spec.template.spec.containers[0].env[?(@.name == "PREFECT_INTEGRATIONS_KUBERNETES_OBSERVER_NAMESPACES")].value
+          value: job-namespace
+
+  - it: Should set Kubernetes worker observer cluster wide
+    set:
+      worker:
+        config:
+          observerClusterWide: true
+    asserts:
+      - template: deployment.yaml
+        notExists:
+          path: .spec.template.spec.containers[0].env[?(@.name == "PREFECT_INTEGRATIONS_KUBERNETES_OBSERVER_NAMESPACES")]
+
   - it: Should set auth string secret environment variables when existingSecret is provided
     set:
       worker:
@@ -858,3 +906,100 @@ tests:
         equal:
           path: .metadata.namespace
           value: my-namespace
+
+  - it: Should not create PDB by default
+    asserts:
+      - template: pdb.yaml
+        hasDocuments:
+          count: 0
+
+  - it: Should create PDB with maxUnavailable
+    set:
+      worker:
+        podDisruptionBudget:
+          maxUnavailable: 1
+    asserts:
+      - template: pdb.yaml
+        hasDocuments:
+          count: 1
+      - template: pdb.yaml
+        equal:
+          path: .apiVersion
+          value: policy/v1
+      - template: pdb.yaml
+        equal:
+          path: .kind
+          value: PodDisruptionBudget
+      - template: pdb.yaml
+        equal:
+          path: .metadata.name
+          value: prefect-worker
+      - template: pdb.yaml
+        equal:
+          path: .metadata.namespace
+          value: prefect
+      - template: pdb.yaml
+        equal:
+          path: .spec.maxUnavailable
+          value: 1
+      - template: pdb.yaml
+        isSubset:
+          path: .spec.selector.matchLabels
+          content:
+            app.kubernetes.io/component: worker
+
+  - it: Should create PDB with minAvailable
+    set:
+      worker:
+        podDisruptionBudget:
+          minAvailable: 1
+    asserts:
+      - template: pdb.yaml
+        hasDocuments:
+          count: 1
+      - template: pdb.yaml
+        equal:
+          path: .spec.minAvailable
+          value: 1
+
+  - it: Should create PDB with unhealthyPodEvictionPolicy
+    set:
+      worker:
+        podDisruptionBudget:
+          maxUnavailable: 1
+          unhealthyPodEvictionPolicy: AlwaysAllow
+    asserts:
+      - template: pdb.yaml
+        equal:
+          path: .spec.maxUnavailable
+          value: 1
+      - template: pdb.yaml
+        equal:
+          path: .spec.unhealthyPodEvictionPolicy
+          value: AlwaysAllow
+
+  - it: Should include common labels in PDB
+    set:
+      commonLabels:
+        my-label: my-value
+      worker:
+        podDisruptionBudget:
+          maxUnavailable: 1
+    asserts:
+      - template: pdb.yaml
+        equal:
+          path: .metadata.labels.my-label
+          value: my-value
+
+  - it: Should include common annotations in PDB
+    set:
+      commonAnnotations:
+        my-annotation: my-value
+      worker:
+        podDisruptionBudget:
+          maxUnavailable: 1
+    asserts:
+      - template: pdb.yaml
+        equal:
+          path: .metadata.annotations.my-annotation
+          value: my-value

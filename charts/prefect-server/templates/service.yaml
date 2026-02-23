@@ -26,8 +26,15 @@ spec:
   {{- if eq .Values.service.type "NodePort" }}
   externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy | quote }}
   {{- end }}
+  {{- if .Values.service.ipFamilyPolicy }}
+  ipFamilyPolicy: {{ .Values.service.ipFamilyPolicy }}
+  {{- end }}
+  {{- if .Values.service.ipFamilies }}
+  ipFamilies:
+    {{- toYaml .Values.service.ipFamilies | nindent 4 }}
+  {{- end }}
   ports:
-    - name: server-svc-port
+    - name: {{ .Values.service.portName }}
       port: {{ .Values.service.port }}
       protocol: TCP
       targetPort: {{ .Values.service.targetPort }}

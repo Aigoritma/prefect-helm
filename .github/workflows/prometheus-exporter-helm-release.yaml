@@ -4,19 +4,18 @@ name: Release Prometheus Prefect Exporter Helm Chart
 "on":
   workflow_dispatch: {}
 
-permissions: {}
+permissions:
+  # GitHub considers creating releases and uploading assets as writing contents.
+  contents: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions:
-      # GitHub considers creating releases and uploading assets as writing contents.
-      contents: write
     outputs:
       releaseVersion: ${{ steps.output_version.outputs.releaseVersion }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
